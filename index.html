@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Weight Tracker</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                        },
+                        accent: {
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        .dark ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 9999px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200">
+
+    <!-- Header Navigation -->
+    <header class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-500/10 text-brand-500 flex items-center justify-center font-bold text-xl border border-brand-500/20">
+                    <i class="ph-bold ph-scales"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight">FitTrack</h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Daily Weight & Body Metrics</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <!-- Unit Switcher Quick Toggle -->
+                <button id="unitToggleBtn" onclick="toggleUnit()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                    Unit: <span id="unitDisplay" class="text-brand-500">lbs</span>
+                </button>
+
+                <!-- Theme Switcher -->
+                <button onclick="toggleTheme()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition" title="Toggle Theme">
+                    <i class="ph-bold ph-sun dark:hidden text-lg"></i>
+                    <i class="ph-bold ph-moon hidden dark:block text-lg"></i>
+                </button>
+
+                <!-- Settings Button -->
+                <button onclick="openSettingsModal()" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition" title="Settings & Goals">
+                    <i class="ph-bold ph-gear text-lg"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- Top Banner / Sample Data Alert if Empty -->
+        <div id="welcomeBanner" class="hidden bg-brand-500/10 border border-brand-500/30 rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="p-3 bg-brand-500/20 text-brand-500 rounded-xl hidden sm:block">
+                    <i class="ph-duotone ph-sparkle text-2xl"></i>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-slate-900 dark:text-slate-100">Welcome to your Daily Weight Tracker!</h3>
+                    <p class="text-sm text-slate-600 dark:text-slate-400">Start logging today or load sample data to see how the trend charts and calculations work.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <button onclick="loadSampleData()" class="w-full sm:w-auto px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-medium text-sm rounded-xl shadow-lg shadow-brand-500/20 transition flex items-center justify-center gap-2">
+                    <i class="ph-bold ph-database"></i> Load Sample Data
+                </button>
+            </div>
+        </div>
+
+        <!-- Dashboard Stat Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <!-- Current Weight Card -->
+            <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Current Weight</p>
+                        <h3 id="statCurrentWeight" class="text-2xl font-bold mt-1 text-slate-900 dark:text-slate-100">--</h3>
+                    </div>
+                    <span class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        <i class="ph-bold ph-scales text-xl"></i>
+                    </span>
+                </div>
+                <p id="statCurrentSub" class="text-xs text-slate-500 dark:text-slate-400 mt-3">No logs recorded</p>
+            </div>
+
+            <!-- Total Change Card -->
+            <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Change</p>
+                        <h3 id="statTotalChange" class="text-2xl font-bold mt-1 text-slate-900 dark:text-slate-100">--</h3>
+                    </div>
+                    <span id="statTotalChangeIconBg" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        <i id="statTotalChangeIcon" class="ph-bold ph-trend-up text-xl"></i>
+                    </span>
+                </div>
+                <p id="statTotalChangeSub" class="text-xs text-slate-500 dark:text-slate-400 mt-3">Since start</p>
+            </div>
+
+            <!-- 7-Day Trend Card -->
+            <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">7-Day Change</p>
+                        <h3 id="stat7DayChange" class="text-2xl font-bold mt-1 text-slate-900 dark:text-slate-100">--</h3>
+                    </div>
+                    <span class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        <i class="ph-bold ph-chart-line-up text-xl"></i>
+                    </span>
+                </div>
+                <p id="stat7DaySub" class="text-xs text-slate-500 dark:text-slate-400 mt-3">Vs. 7 days ago</p>
+            </div>
+
+            <!-- BMI Card -->
+            <div class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Body Mass Index (BMI)</p>
+                        <div class="flex items-baseline gap-2 mt-1">
+                            <h3 id="statBMI" class="text-2xl font-bold text-slate-900 dark:text-slate-100">--</h3>
+                            <span id="statBMIBadge" class="text-xs px-2 py-0.5 rounded-full font-semibold hidden">--</span>
+                        </div>
+                    </div>
+                    <span class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        <i class="ph-bold ph-heartbeat text-xl"></i>
+                    </span>
+                </div>
+                <p id="statBMISub" class="text-xs text-slate-500 dark:text-slate-400 mt-3">Set height in settings to compute</p>
+            </div>
+        </div>
+
+        <!-- Target Progress Card -->
+        <div id="goalProgressCard" class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <i class="ph-bold ph-target text-brand-500 text-xl"></i>
+                    <h3 class="font-semibold text-slate-900 dark:text-slate-100">Target Weight Progress</h3>
+                </div>
+                <div class="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                    Goal: <span id="goalTargetDisplay" class="font-bold text-slate-900 dark:text-slate-100">--</span> | 
+                    Remaining: <span id="goalRemainingDisplay" class="font-bold text-brand-500">--</span>
+                </div>
+            </div>
+            <!-- Progress Bar -->
+            <div class="w-full bg-slate-100 dark:bg-slate-800 h-3.5 rounded-full overflow-hidden p-0.5 border border-slate-200/50 dark:border-slate-700/50">
+                <div id="goalProgressBar" class="bg-brand-500 h-full rounded-full transition-all duration-500 w-0"></div>
+            </div>
+            <div class="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>Start: <strong id="goalStartDisplay">--</strong></span>
+                <span id="goalPercentDisplay">0% Achieved</span>
+                <span>Target: <strong id="goalEndDisplay">--</strong></span>
+            </div>
+        </div>
+
+        <!-- Section Grid: Entry Form + Analytics Chart -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <!-- Daily Entry Form Side -->
+            <div class="lg:col-span-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <i class="ph-bold ph-plus-circle text-brand-500"></i>
+                        <span id="formTitle">Log Daily Weight</span>
+                    </h2>
+                    <button id="cancelEditBtn" onclick="resetForm()" class="hidden text-xs text-rose-500 hover:underline">Cancel Edit</button>
+                </div>
+
+                <form id="weightForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                    <input type="hidden" id="editEntryId" value="">
+
+                    <!-- Date Selection -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1" for="entryDate">Date</label>
+                        <input type="date" id="entryDate" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm">
+                    </div>
+
+                    <!-- Weight Input & Unit -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1" for="entryWeight">
+                            Weight (<span class="unitLabel">lbs</span>)
+                        </label>
+                        <div class="relative">
+                            <input type="number" step="0.1" min="1" max="1000" id="entryWeight" placeholder="0.0" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm pr-12">
+                            <span class="unitLabel absolute right-3.5 top-2.5 text-xs font-bold text-slate-400 pointer-events-none">lbs</span>
+                        </div>
+                    </div>
+
+                    <!-- Body Fat % Input -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1" for="entryFat">
+                            Body Fat % <span class="font-normal text-slate-400">(Optional)</span>
+                        </label>
+                        <div class="relative">
+                            <input type="number" step="0.1" min="1" max="70" id="entryFat" placeholder="e.g. 18.5" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm pr-10">
+                            <span class="absolute right-3.5 top-2.5 text-xs font-bold text-slate-400 pointer-events-none">%</span>
+                        </div>
+                    </div>
+
+                    <!-- Notes Input -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1" for="entryNotes">
+                            Notes / Context <span class="font-normal text-slate-400">(Optional)</span>
+                        </label>
+                        <textarea id="entryNotes" rows="2" placeholder="Morning measurement, after workout, etc." class="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm resize-none"></textarea>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" id="saveBtn" class="w-full py-3 px-4 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-semibold text-sm rounded-xl shadow-md shadow-brand-500/20 transition flex items-center justify-center gap-2">
+                        <i class="ph-bold ph-floppy-disk text-lg"></i> Save Entry
+                    </button>
+                </form>
+            </div>
+
+            <!-- Chart Analytics Side -->
+            <div class="lg:col-span-8 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                            <i class="ph-bold ph-chart-line text-brand-500"></i> Weight Trend Analysis
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Track daily logs and smoothed 7-day moving averages</p>
+                    </div>
+
+                    <!-- Time Range Filters -->
+                    <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 self-start sm:self-auto">
+                        <button onclick="setChartTimeframe('7d')" id="tf-7d" class="tf-btn px-3 py-1 text-xs font-medium rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">7D</button>
+                        <button onclick="setChartTimeframe('30d')" id="tf-30d" class="tf-btn px-3 py-1 text-xs font-medium rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">30D</button>
+                        <button onclick="setChartTimeframe('3m')" id="tf-3m" class="tf-btn px-3 py-1 text-xs font-medium rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">3M</button>
+                        <button onclick="setChartTimeframe('all')" id="tf-all" class="tf-btn px-3 py-1 text-xs font-medium rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">ALL</button>
+                    </div>
+                </div>
+
+                <!-- Canvas Wrapper -->
+                <div class="relative w-full h-[320px] sm:h-[360px]">
+                    <canvas id="weightChart"></canvas>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800 gap-2">
+                    <div class="flex items-center gap-4">
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-brand-500 inline-block"></span> Daily Weight</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-1.5 bg-accent-500 inline-block rounded"></span> 7-Day Moving Avg</span>
+                    </div>
+                    <span>Fluctuations are normal! Moving avg helps reveal your true trend.</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Log History Table Section -->
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden space-y-4">
+            <div class="p-6 pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <i class="ph-bold ph-notebook text-brand-500"></i> Weight Logs History
+                    </h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Detailed list of recorded entries</p>
+                </div>
+
+                <!-- Action Tools -->
+                <div class="flex items-center gap-2">
+                    <button onclick="exportCSV()" class="px-3 py-1.5 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-1.5">
+                        <i class="ph-bold ph-download-simple"></i> CSV
+                    </button>
+                    <button onclick="exportJSON()" class="px-3 py-1.5 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-1.5">
+                        <i class="ph-bold ph-export"></i> Backup (JSON)
+                    </button>
+                    <button onclick="triggerImportJSON()" class="px-3 py-1.5 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-1.5">
+                        <i class="ph-bold ph-upload-simple"></i> Restore
+                    </button>
+                    <input type="file" id="jsonInput" accept=".json" class="hidden" onchange="importJSON(event)">
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider border-y border-slate-200 dark:border-slate-800">
+                        <tr>
+                            <th class="py-3 px-6">Date</th>
+                            <th class="py-3 px-6">Weight (<span class="unitLabel">lbs</span>)</th>
+                            <th class="py-3 px-6">Change</th>
+                            <th class="py-3 px-6">Body Fat</th>
+                            <th class="py-3 px-6">Notes</th>
+                            <th class="py-3 px-6 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/60">
+                        <!-- Dynamic Rows Here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State for Table -->
+            <div id="emptyTableState" class="hidden p-8 text-center space-y-3">
+                <i class="ph-duotone ph-clipboard-text text-4xl text-slate-400"></i>
+                <p class="text-sm text-slate-500 dark:text-slate-400">No weight entries logged yet.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-5 shadow-2xl relative">
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <h3 class="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <i class="ph-bold ph-gear text-brand-500"></i> Settings & Goals
+                </h3>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg">
+                    <i class="ph-bold ph-x"></i>
+                </button>
+            </div>
+
+            <form id="settingsForm" onsubmit="saveSettings(event)" class="space-y-4">
+                <!-- Unit Select -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1" for="settingUnit">Preferred Weight Unit</label>
+                    <select id="settingUnit" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm">
+                        <option value="lbs">Pounds (lbs)</option>
+                        <option value="kg">Kilograms (kg)</option>
+                    </select>
+                </div>
+
+                <!-- User Height Input (For BMI) -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1" for="settingHeight">
+                        Height (<span id="heightUnitLabel">inches</span>)
+                    </label>
+                    <input type="number" step="0.1" id="settingHeight" placeholder="e.g. 70 for 5'10&quot; or 175 for cm" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm">
+                    <p class="text-[11px] text-slate-400 mt-1">Used for automatic BMI calculations. Enter inches for lbs or cm for kg.</p>
+                </div>
+
+                <!-- Target Weight Goal -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1" for="settingTargetWeight">
+                        Target Goal Weight (<span class="unitLabel">lbs</span>)
+                    </label>
+                    <input type="number" step="0.1" id="settingTargetWeight" placeholder="e.g. 165" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm">
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="pt-3 flex gap-3">
+                    <button type="submit" class="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl text-sm transition">
+                        Save Preferences
+                    </button>
+                    <button type="button" onclick="closeSettingsModal()" class="px-4 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-medium rounded-xl text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+
+            <div class="border-t border-slate-100 dark:border-slate-800 pt-4 flex justify-between items-center">
+                <span class="text-xs text-slate-400">Need sample test data?</span>
+                <button onclick="loadSampleData(); closeSettingsModal();" class="text-xs text-brand-500 hover:underline font-semibold">
+                    Load Demo Data
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 translate-y-20 opacity-0 transition-all duration-300 z-50 text-sm font-medium">
+        <i id="toastIcon" class="ph-bold ph-check-circle text-brand-500 text-lg"></i>
+        <span id="toastMsg">Action completed successfully</span>
+    </div>
+
+    <!-- Application JavaScript Logic -->
+    <script>
+        // State Management
+        let appData = {
+            unit: 'lbs', // 'lbs' or 'kg'
+            height: 70, // inches if lbs, cm if kg
+            targetWeight: 160,
+            entries: [] // Array of { id, date, weight, fat, notes }
+        };
+
+        let selectedTimeframe = '30d';
+        let chartInstance = null;
+
+        // Initialize App on Load
+        window.onload = function() {
+            // Set default date picker to today
+            document.getElementById('entryDate').valueAsDate = new Date();
+
+            // Load saved settings & entries from LocalStorage
+            loadState();
+
+            // Sync theme preference
+            initTheme();
+
+            // Render Dashboard & UI
+            renderAll();
+        };
+
+        // Local Storage Handling
+        function saveState() {
+            localStorage.setItem('fittrack_data', JSON.stringify(appData));
+        }
+
+        function loadState() {
+            const saved = localStorage.getItem('fittrack_data');
+            if (saved) {
+                try {
+                    appData = JSON.parse(saved);
+                } catch(e) {
+                    console.error("Failed to parse saved state", e);
+                }
+            }
+        }
+
+        // Theme Switcher (Dark/Light)
+        function initTheme() {
+            if (localStorage.theme === 'light') {
+                document.documentElement.classList.remove('dark');
+            } else {
+                document.documentElement.classList.add('dark');
+            }
+        }
+
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+            // Re-render chart to adjust dark/light grid lines
+            renderChart();
+        }
+
+        // Unit Switcher logic (lbs <-> kg)
+        function toggleUnit() {
+            const newUnit = appData.unit === 'lbs' ? 'kg' : 'lbs';
+            
+            // Convert existing entries values dynamically if switching
+            const factor = newUnit === 'kg' ? 0.453592 : 2.20462;
+            
+            appData.entries = appData.entries.map(e => ({
+                ...e,
+                weight: parseFloat((e.weight * factor).toFixed(1))
+            }));
+
+            if (appData.targetWeight) {
+                appData.targetWeight = parseFloat((appData.targetWeight * factor).toFixed(1));
+            }
+
+            // Height conversion estimation for BMI convenience
+            if (appData.height) {
+                appData.height = newUnit === 'kg' 
+                    ? parseFloat((appData.height * 2.54).toFixed(1)) 
+                    : parseFloat((appData.height / 2.54).toFixed(1));
+            }
+
+            appData.unit = newUnit;
+            saveState();
+            renderAll();
+            showToast(`Switched preferred unit to ${newUnit.toUpperCase()}`);
+        }
+
+        // Master Render Function
+        function renderAll() {
+            // Update Unit Displays
+            document.querySelectorAll('.unitLabel').forEach(el => el.textContent = appData.unit);
+            document.getElementById('unitDisplay').textContent = appData.unit;
+            document.getElementById('heightUnitLabel').textContent = appData.unit === 'lbs' ? 'inches' : 'cm';
+
+            // Show/Hide Welcome Banner
+            const banner = document.getElementById('welcomeBanner');
+            if (appData.entries.length === 0) {
+                banner.classList.remove('hidden');
+            } else {
+                banner.classList.add('hidden');
+            }
+
+            // Render Stats & Calculations
+            renderStats();
+
+            // Render Goal Progress
+            renderGoalProgress();
+
+            // Render History Table
+            renderTable();
+
+            // Render Analytics Chart
+            renderChart();
+        }
+
+        // Sort entries by date ascending
+        function getSortedEntries() {
+            return [...appData.entries].sort((a, b) => new Date(a.date) - new Date(b.date));
+        }
+
+        // Render Summary Stat Cards
+        function renderStats() {
+            const sorted = getSortedEntries();
+
+            if (sorted.length === 0) {
+                document.getElementById('statCurrentWeight').textContent = '--';
+                document.getElementById('statCurrentSub').textContent = 'No records logged';
+                document.getElementById('statTotalChange').textContent = '--';
+                document.getElementById('statTotalChangeSub').textContent = 'Since start';
+                document.getElementById('stat7DayChange').textContent = '--';
+                document.getElementById('stat7DaySub').textContent = 'Vs. 7 days ago';
+                document.getElementById('statBMI').textContent = '--';
+                document.getElementById('statBMIBadge').classList.add('hidden');
+                return;
+            }
+
+            const latest = sorted[sorted.length - 1];
+            const start = sorted[0];
+
+            // 1. Current Weight
+            document.getElementById('statCurrentWeight').textContent = `${latest.weight} ${appData.unit}`;
+            document.getElementById('statCurrentSub').textContent = `Logged on ${formatDate(latest.date)}`;
+
+            // 2. Total Change
+            const totalDiff = latest.weight - start.weight;
+            const totalDiffStr = (totalDiff > 0 ? '+' : '') + totalDiff.toFixed(1) + ` ${appData.unit}`;
+            document.getElementById('statTotalChange').textContent = totalDiffStr;
+            
+            const totalChangeEl = document.getElementById('statTotalChange');
+            if (totalDiff < 0) {
+                totalChangeEl.className = "text-2xl font-bold mt-1 text-emerald-500";
+            } else if (totalDiff > 0) {
+                totalChangeEl.className = "text-2xl font-bold mt-1 text-amber-500";
+            } else {
+                totalChangeEl.className = "text-2xl font-bold mt-1 text-slate-900 dark:text-slate-100";
+            }
+
+            // 3. 7-Day Change
+            const latestDate = new Date(latest.date);
+            const sevenDaysAgoDate = new Date(latestDate);
+            sevenDaysAgoDate.setDate(sevenDaysAgoDate.getDate() - 7);
+
+            // Find entry closest to 7 days ago
+            let entry7DaysAgo = null;
+            for (let i = sorted.length - 1; i >= 0; i--) {
+                const d = new Date(sorted[i].date);
+                if (d <= sevenDaysAgoDate) {
+                    entry7DaysAgo = sorted[i];
+                    break;
+                }
+            }
+
+            if (entry7DaysAgo) {
+                const diff7 = latest.weight - entry7DaysAgo.weight;
+                document.getElementById('stat7DayChange').textContent = (diff7 > 0 ? '+' : '') + diff7.toFixed(1) + ` ${appData.unit}`;
+                document.getElementById('stat7DaySub').textContent = `Vs ${formatDate(entry7DaysAgo.date)}`;
+            } else {
+                document.getElementById('stat7DayChange').textContent = '--';
+                document.getElementById('stat7DaySub').textContent = 'Insufficient data for 7D';
+            }
+
+            // 4. BMI Calculation
+            if (appData.height && appData.height > 0) {
+                let bmi = 0;
+                if (appData.unit === 'lbs') {
+                    // Formula: weight (lb) / [height (in)]2 x 703
+                    bmi = (latest.weight / (appData.height * appData.height)) * 703;
+                } else {
+                    // Formula: weight (kg) / [height (m)]2
+                    const heightMeters = appData.height / 100;
+                    bmi = latest.weight / (heightMeters * heightMeters);
+                }
+
+                bmi = parseFloat(bmi.toFixed(1));
+                document.getElementById('statBMI').textContent = bmi;
+                
+                const badge = document.getElementById('statBMIBadge');
+                badge.classList.remove('hidden');
+
+                if (bmi < 18.5) {
+                    badge.textContent = 'Underweight';
+                    badge.className = 'text-xs px-2 py-0.5 rounded-full font-semibold bg-blue-500/10 text-blue-500';
+                } else if (bmi >= 18.5 && bmi < 25) {
+                    badge.textContent = 'Normal';
+                    badge.className = 'text-xs px-2 py-0.5 rounded-full font-semibold bg-emerald-500/10 text-emerald-500';
+                } else if (bmi >= 25 && bmi < 30) {
+                    badge.textContent = 'Overweight';
+                    badge.className = 'text-xs px-2 py-0.5 rounded-full font-semibold bg-amber-500/10 text-amber-500';
+                } else {
+                    badge.textContent = 'Obese';
+                    badge.className = 'text-xs px-2 py-0.5 rounded-full font-semibold bg-rose-500/10 text-rose-500';
+                }
+                document.getElementById('statBMISub').textContent = `Based on height ${appData.height} ${appData.unit === 'lbs' ? 'in' : 'cm'}`;
+            } else {
+                document.getElementById('statBMI').textContent = '--';
+                document.getElementById('statBMIBadge').classList.add('hidden');
+                document.getElementById('statBMISub').textContent = 'Set height in settings';
+            }
+        }
+
+        // Render Progress toward Goal
+        function renderGoalProgress() {
+            const sorted = getSortedEntries();
+            const goalCard = document.getElementById('goalProgressCard');
+
+            if (sorted.length === 0 || !appData.targetWeight) {
+                document.getElementById('goalTargetDisplay').textContent = appData.targetWeight ? `${appData.targetWeight} ${appData.unit}` : 'Not Set';
+                document.getElementById('goalRemainingDisplay').textContent = '--';
+                document.getElementById('goalStartDisplay').textContent = '--';
+                document.getElementById('goalEndDisplay').textContent = appData.targetWeight ? `${appData.targetWeight} ${appData.unit}` : '--';
+                document.getElementById('goalPercentDisplay').textContent = 'Set target in Settings';
+                document.getElementById('goalProgressBar').style.width = '0%';
+                return;
+            }
+
+            const startWeight = sorted[0].weight;
+            const currentWeight = sorted[sorted.length - 1].weight;
+            const targetWeight = appData.targetWeight;
+
+            document.getElementById('goalTargetDisplay').textContent = `${targetWeight} ${appData.unit}`;
+            document.getElementById('goalStartDisplay').textContent = `${startWeight} ${appData.unit}`;
+            document.getElementById('goalEndDisplay').textContent = `${targetWeight} ${appData.unit}`;
+
+            const remaining = Math.abs(currentWeight - targetWeight).toFixed(1);
+            document.getElementById('goalRemainingDisplay').textContent = `${remaining} ${appData.unit}`;
+
+            // Calculate progress percentage
+            let percentage = 0;
+            const totalDistance = Math.abs(startWeight - targetWeight);
+            const traveledDistance = Math.abs(startWeight - currentWeight);
+
+            if (totalDistance === 0) {
+                percentage = 100;
+            } else {
+                percentage = Math.min(100, Math.max(0, (traveledDistance / totalDistance) * 100));
+            }
+
+            document.getElementById('goalProgressBar').style.width = `${percentage}%`;
+            document.getElementById('goalPercentDisplay').textContent = `${Math.round(percentage)}% Achieved`;
+        }
+
+        // Form Submission (Add or Edit Entry)
+        function handleFormSubmit(event) {
+            event.preventDefault();
+
+            const editId = document.getElementById('editEntryId').value;
+            const dateVal = document.getElementById('entryDate').value;
+            const weightVal = parseFloat(document.getElementById('entryWeight').value);
+            const fatVal = document.getElementById('entryFat').value ? parseFloat(document.getElementById('entryFat').value) : null;
+            const notesVal = document.getElementById('entryNotes').value.trim();
+
+            if (!dateVal || isNaN(weightVal)) {
+                showToast("Please provide valid date and weight.", "error");
+                return;
+            }
+
+            if (editId) {
+                // Editing existing record
+                const idx = appData.entries.findIndex(e => e.id === editId);
+                if (idx !== -1) {
+                    appData.entries[idx] = {
+                        id: editId,
+                        date: dateVal,
+                        weight: weightVal,
+                        fat: fatVal,
+                        notes: notesVal
+                    };
+                    showToast("Entry updated successfully!");
+                }
+            } else {
+                // Check if entry for same date exists
+                const existingIdx = appData.entries.findIndex(e => e.date === dateVal);
+                if (existingIdx !== -1) {
+                    // Update instead of duplicating
+                    appData.entries[existingIdx] = {
+                        id: appData.entries[existingIdx].id,
+                        date: dateVal,
+                        weight: weightVal,
+                        fat: fatVal,
+                        notes: notesVal
+                    };
+                    showToast("Updated existing entry for this date!");
+                } else {
+                    // Create New Entry
+                    const newEntry = {
+                        id: 'id_' + Date.now(),
+                        date: dateVal,
+                        weight: weightVal,
+                        fat: fatVal,
+                        notes: notesVal
+                    };
+                    appData.entries.push(newEntry);
+                    showToast("New weight entry saved!");
+                }
+            }
+
+            saveState();
+            resetForm();
+            renderAll();
+        }
+
+        function resetForm() {
+            document.getElementById('editEntryId').value = '';
+            document.getElementById('entryWeight').value = '';
+            document.getElementById('entryFat').value = '';
+            document.getElementById('entryNotes').value = '';
+            document.getElementById('entryDate').valueAsDate = new Date();
+            document.getElementById('formTitle').textContent = 'Log Daily Weight';
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+        }
+
+        function editEntry(id) {
+            const entry = appData.entries.find(e => e.id === id);
+            if (!entry) return;
+
+            document.getElementById('editEntryId').value = entry.id;
+            document.getElementById('entryDate').value = entry.date;
+            document.getElementById('entryWeight').value = entry.weight;
+            document.getElementById('entryFat').value = entry.fat !== null ? entry.fat : '';
+            document.getElementById('entryNotes').value = entry.notes || '';
+
+            document.getElementById('formTitle').textContent = 'Edit Weight Entry';
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+
+            // Scroll to form on mobile
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function deleteEntry(id) {
+            if (confirm("Are you sure you want to delete this weight log?")) {
+                appData.entries = appData.entries.filter(e => e.id !== id);
+                saveState();
+                renderAll();
+                showToast("Entry deleted");
+            }
+        }
+
+        // Render Table History
+        function renderTable() {
+            const sorted = getSortedEntries().reverse(); // Display latest first in table
+            const tbody = document.getElementById('logTableBody');
+            const emptyState = document.getElementById('emptyTableState');
+
+            tbody.innerHTML = '';
+
+            if (sorted.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            sorted.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition text-slate-800 dark:text-slate-200";
+
+                // Calculate Change from previous date entry
+                let changeHtml = '<span class="text-slate-400">--</span>';
+                // Note: since sorted is reversed, previous chronological entry is at index + 1
+                if (index < sorted.length - 1) {
+                    const prevWeight = sorted[index + 1].weight;
+                    const diff = parseFloat((item.weight - prevWeight).toFixed(1));
+                    if (diff > 0) {
+                        changeHtml = `<span class="text-amber-500 font-medium flex items-center gap-0.5"><i class="ph-bold ph-caret-up"></i> +${diff}</span>`;
+                    } else if (diff < 0) {
+                        changeHtml = `<span class="text-emerald-500 font-medium flex items-center gap-0.5"><i class="ph-bold ph-caret-down"></i> ${diff}</span>`;
+                    } else {
+                        changeHtml = `<span class="text-slate-400 font-medium">0.0</span>`;
+                    }
+                }
+
+                const fatDisplay = item.fat ? `${item.fat}%` : '<span class="text-slate-400">--</span>';
+                const notesDisplay = item.notes ? `<span class="truncate max-w-[180px] inline-block" title="${escapeHtml(item.notes)}">${escapeHtml(item.notes)}</span>` : '<span class="text-slate-400">--</span>';
+
+                tr.innerHTML = `
+                    <td class="py-3.5 px-6 font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">${formatDate(item.date)}</td>
+                    <td class="py-3.5 px-6 font-bold whitespace-nowrap">${item.weight} <span class="text-xs text-slate-400 font-normal">${appData.unit}</span></td>
+                    <td class="py-3.5 px-6 whitespace-nowrap">${changeHtml}</td>
+                    <td class="py-3.5 px-6 whitespace-nowrap text-xs">${fatDisplay}</td>
+                    <td class="py-3.5 px-6 text-xs text-slate-500 dark:text-slate-400">${notesDisplay}</td>
+                    <td class="py-3.5 px-6 text-right whitespace-nowrap">
+                        <div class="flex items-center justify-end gap-2">
+                            <button onclick="editEntry('${item.id}')" class="p-1.5 text-slate-400 hover:text-brand-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Edit">
+                                <i class="ph-bold ph-pencil-simple text-base"></i>
+                            </button>
+                            <button onclick="deleteEntry('${item.id}')" class="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition" title="Delete">
+                                <i class="ph-bold ph-trash text-base"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Render Chart using Chart.js
+        function setChartTimeframe(tf) {
+            selectedTimeframe = tf;
+            document.querySelectorAll('.tf-btn').forEach(btn => {
+                btn.classList.remove('bg-white', 'dark:bg-slate-700', 'shadow-sm', 'text-slate-900', 'dark:text-white');
+            });
+            document.getElementById(`tf-${tf}`).classList.add('bg-white', 'dark:bg-slate-700', 'shadow-sm', 'text-slate-900', 'dark:text-white');
+            renderChart();
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('weightChart').getContext('2d');
+            const sorted = getSortedEntries();
+
+            // Highlight Active Timeframe Button State
+            document.querySelectorAll('.tf-btn').forEach(btn => {
+                btn.classList.remove('bg-white', 'dark:bg-slate-700', 'shadow-sm', 'text-slate-900', 'dark:text-white');
+            });
+            const activeTfBtn = document.getElementById(`tf-${selectedTimeframe}`);
+            if (activeTfBtn) activeTfBtn.classList.add('bg-white', 'dark:bg-slate-700', 'shadow-sm', 'text-slate-900', 'dark:text-white');
+
+            // Filter data according to timeframe
+            let filtered = sorted;
+            if (sorted.length > 0) {
+                const now = new Date(sorted[sorted.length - 1].date);
+                if (selectedTimeframe === '7d') {
+                    const cutoff = new Date(now);
+                    cutoff.setDate(cutoff.getDate() - 7);
+                    filtered = sorted.filter(e => new Date(e.date) >= cutoff);
+                } else if (selectedTimeframe === '30d') {
+                    const cutoff = new Date(now);
+                    cutoff.setDate(cutoff.getDate() - 30);
+                    filtered = sorted.filter(e => new Date(e.date) >= cutoff);
+                } else if (selectedTimeframe === '3m') {
+                    const cutoff = new Date(now);
+                    cutoff.setMonth(cutoff.getMonth() - 3);
+                    filtered = sorted.filter(e => new Date(e.date) >= cutoff);
+                }
+            }
+
+            const labels = filtered.map(e => formatDate(e.date));
+            const weights = filtered.map(e => e.weight);
+
+            // Compute 7-day Moving Average for filtered dataset
+            const movingAverages = filtered.map((_, index, array) => {
+                const windowStart = Math.max(0, index - 6);
+                const window = array.slice(windowStart, index + 1);
+                const sum = window.reduce((acc, curr) => acc + curr.weight, 0);
+                return parseFloat((sum / window.length).toFixed(1));
+            });
+
+            // Theme colors
+            const isDark = document.documentElement.classList.contains('dark');
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+            const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: `Daily Weight (${appData.unit})`,
+                            data: weights,
+                            borderColor: '#22c55e',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            fill: true,
+                            tension: 0.2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            pointBackgroundColor: '#22c55e',
+                            borderWidth: 2
+                        },
+                        {
+                            label: `7-Day Moving Avg`,
+                            data: movingAverages,
+                            borderColor: '#3b82f6',
+                            borderDash: [5, 5],
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: isDark ? '#0f172a' : '#ffffff',
+                            titleColor: isDark ? '#f8fafc' : '#0f172a',
+                            bodyColor: isDark ? '#cbd5e1' : '#334155',
+                            borderColor: isDark ? '#334155' : '#e2e8f0',
+                            borderWidth: 1,
+                            padding: 12,
+                            boxPadding: 6,
+                            usePointStyle: true,
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.dataset.label}: ${context.parsed.y} ${appData.unit}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: gridColor
+                            },
+                            ticks: {
+                                color: textColor,
+                                font: { family: 'Inter', size: 11 }
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: gridColor
+                            },
+                            ticks: {
+                                color: textColor,
+                                font: { family: 'Inter', size: 11 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Settings Modal Handling
+        function openSettingsModal() {
+            document.getElementById('settingUnit').value = appData.unit;
+            document.getElementById('settingHeight').value = appData.height || '';
+            document.getElementById('settingTargetWeight').value = appData.targetWeight || '';
+
+            const modal = document.getElementById('settingsModal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+            }, 10);
+        }
+
+        function closeSettingsModal() {
+            const modal = document.getElementById('settingsModal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+
+        function saveSettings(e) {
+            e.preventDefault();
+            const newUnit = document.getElementById('settingUnit').value;
+            const newHeight = parseFloat(document.getElementById('settingHeight').value) || null;
+            const newTarget = parseFloat(document.getElementById('settingTargetWeight').value) || null;
+
+            if (newUnit !== appData.unit) {
+                appData.unit = newUnit;
+            }
+
+            appData.height = newHeight;
+            appData.targetWeight = newTarget;
+
+            saveState();
+            closeSettingsModal();
+            renderAll();
+            showToast("Settings saved successfully!");
+        }
+
+        // Load Mock Demo Data
+        function loadSampleData() {
+            const today = new Date();
+            const sampleEntries = [];
+            let baseWeight = appData.unit === 'lbs' ? 182 : 82.5;
+
+            for (let i = 29; i >= 0; i--) {
+                const d = new Date(today);
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+
+                // Simulate slight daily fluctuations with downward trend
+                const noise = (Math.random() - 0.45) * 0.8;
+                baseWeight = baseWeight - 0.12 + noise;
+
+                sampleEntries.push({
+                    id: 'sample_' + i,
+                    date: dateStr,
+                    weight: parseFloat(baseWeight.toFixed(1)),
+                    fat: parseFloat((20 - (30 - i) * 0.1).toFixed(1)),
+                    notes: i % 5 === 0 ? "Consistent workout & diet" : ""
+                });
+            }
+
+            appData.entries = sampleEntries;
+            appData.targetWeight = appData.unit === 'lbs' ? 172 : 78;
+            appData.height = appData.unit === 'lbs' ? 70 : 178;
+
+            saveState();
+            renderAll();
+            showToast("30 days of sample data loaded!");
+        }
+
+        // Export / Import Tools
+        function exportCSV() {
+            if (appData.entries.length === 0) {
+                showToast("No data to export", "error");
+                return;
+            }
+
+            let csv = `Date,Weight (${appData.unit}),Body Fat %,Notes\n`;
+            getSortedEntries().forEach(e => {
+                csv += `"${e.date}",${e.weight},${e.fat !== null ? e.fat : ''},"${(e.notes || '').replace(/"/g, '""')}"\n`;
+            });
+
+            downloadFile(csv, `weight_tracker_${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
+            showToast("CSV file downloaded!");
+        }
+
+        function exportJSON() {
+            const jsonStr = JSON.stringify(appData, null, 2);
+            downloadFile(jsonStr, `fittrack_backup_${new Date().toISOString().split('T')[0]}.json`, 'application/json');
+            showToast("JSON backup downloaded!");
+        }
+
+        function triggerImportJSON() {
+            document.getElementById('jsonInput').click();
+        }
+
+        function importJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (importedData && Array.isArray(importedData.entries)) {
+                        appData = importedData;
+                        saveState();
+                        renderAll();
+                        showToast("Backup restored successfully!");
+                    } else {
+                        showToast("Invalid data format", "error");
+                    }
+                } catch(err) {
+                    showToast("Failed to parse JSON file", "error");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function downloadFile(content, fileName, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Toast Notification Helper
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastMsg.textContent = message;
+            
+            if (type === 'error') {
+                toastIcon.className = 'ph-bold ph-warning text-rose-500 text-lg';
+            } else {
+                toastIcon.className = 'ph-bold ph-check-circle text-brand-500 text-lg';
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        // Helper Utility Functions
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const parts = dateString.split('-');
+            if (parts.length === 3) {
+                const date = new Date(parts[0], parts[1] - 1, parts[2]);
+                return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+            }
+            return dateString;
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
